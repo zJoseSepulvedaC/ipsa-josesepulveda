@@ -1,11 +1,7 @@
 <template>
-  <div
-    class="instrument-item"
-    :class="{ selected: instrument.codeInstrument === selected }"
-    @click="$emit('click')"
-  >
+  <div class="instrument-item">
     <span>{{ instrument.codeInstrument }}</span>
-    <span :class="variationClass"> {{ formattedVariation }}% </span>
+    <span :class="variationClass">{{ formattedVariacion }}%</span>
   </div>
 </template>
 
@@ -16,17 +12,14 @@ export default {
       type: Object,
       required: true,
     },
-    selected: String,
   },
   computed: {
-    formattedVariation() {
-      const last = parseFloat(this.instrument.price?.lastPrice);
-      const close = parseFloat(this.instrument.price?.closePrice);
-      if (isNaN(last) || isNaN(close)) return "-";
-      return (((last - close) / close) * 100).toFixed(2);
+    formattedVariacion() {
+      const val = parseFloat(this.instrument.variacion);
+      return isNaN(val) ? "-" : val.toFixed(2);
     },
     variationClass() {
-      const val = parseFloat(this.formattedVariation);
+      const val = parseFloat(this.instrument.variacion);
       return isNaN(val) ? "" : val >= 0 ? "positive" : "negative";
     },
   },
@@ -38,14 +31,7 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 10px;
-  margin: 5px 0;
-  background: #2a2a2a;
-  color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.instrument-item.selected {
-  background: #444;
+  border-bottom: 1px solid #333;
 }
 .positive {
   color: green;

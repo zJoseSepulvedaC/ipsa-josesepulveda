@@ -1,18 +1,19 @@
 <template>
   <div>
     <HeaderComponent :indexName="selected" :summary="summary" />
-    <InstrumentListComponent
+    <ChartComponent :history="history" />
+    <InstrumentTableComponent
       :instruments="instruments"
+      :summaries="summaries"
       v-model:selected="selected"
     />
-    <ChartComponent :history="history" />
   </div>
 </template>
 
 <script>
 import HeaderComponent from "./components/HeaderComponent.vue";
-import InstrumentListComponent from "./components/InstrumentListComponent.vue";
 import ChartComponent from "./components/ChartComponent.vue";
+import InstrumentTableComponent from "./components/InstrumentTableComponent.vue";
 import {
   getConstituents,
   getInstrumentSummary,
@@ -20,10 +21,11 @@ import {
 } from "./services/dataService";
 
 export default {
-  components: { HeaderComponent, InstrumentListComponent, ChartComponent },
+  components: { HeaderComponent, ChartComponent, InstrumentTableComponent },
   data() {
     return {
       instruments: [],
+      summaries: {}, // ahora cargaremos los resúmenes reales
       summary: { valor_actual: "-", variacion: "-" },
       history: [],
       selected: "IPSA",
@@ -39,11 +41,22 @@ export default {
   },
   methods: {
     async loadData() {
-      const instrumentsData = await getConstituents();
-      this.instruments = instrumentsData.constituents || []; // SOLO el array
-      const resumen = await getInstrumentSummary(this.selected);
-      this.summary = { ...resumen };
-      this.history = await getInstrumentHistory(this.selected);
+      try {
+        // Obtenemos instrumentos y sus resúmenes desde el servicio
+        const { instruments, summaries } = await getConstituents();
+        this.instruments = instruments;
+        this.summaries = summaries;
+
+        console.log("Instrumentos cargados:", this.instruments);
+        console.log("Summaries cargados:", this.summaries);
+
+        // Resumen e histórico del índice seleccionado
+        const resumen = await getInstrumentSummary(this.selected);
+        this.summary = { ...resumen };
+        this.history = await getInstrumentHistory(this.selected);
+      } catch (error) {
+        console.error("Error cargando datos:", error);
+      }
     },
   },
 };
