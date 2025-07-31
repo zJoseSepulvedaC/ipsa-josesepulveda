@@ -5,7 +5,6 @@ export async function getConstituents() {
   const res = await axios.get("/data/constituyentes/constituentsList.json");
   const instruments = res.data?.data?.constituents || [];
 
-  // Cargar los resúmenes de cada instrumento
   const summaries = {};
   for (const instrument of instruments) {
     try {
@@ -25,7 +24,7 @@ export async function getConstituents() {
       );
       const history = historyRes.data?.data?.chart || [];
 
-      // Variaciones calculadas
+      // Variaciones calculadas con fallback
       const var30d = calculateVariation(history, 30);
       const varAno = calculateYearToDate(history);
       const var12m = calculateVariation(history, 365);
@@ -39,6 +38,11 @@ export async function getConstituents() {
         var12m: var12m,
       };
     } catch (e) {
+      console.error(
+        "Error cargando instrumento:",
+        instrument.codeInstrument,
+        e
+      );
       summaries[instrument.codeInstrument] = {
         ultimo: "-",
         monto: "-",
@@ -53,31 +57,36 @@ export async function getConstituents() {
   return { instruments, summaries };
 }
 
-// Calcular variación a partir de días atrás
+// Calcular variación con fallback seguro
 function calculateVariation(history, days) {
-  if (!history.length) return "-";
+  if (!history || history.length < 2) return "-";
   const last = parseFloat(history[history.length - 1].lastPrice);
-  const pastData = history.find(
-    (h) =>
-      new Date(h.datetimeLastPrice) <
-      new Date().setDate(new Date().getDate() - days)
-  );
-  if (!pastData) return "-";
+  const lastTs = history[history.length - 1].datetimeLastPriceTs;
+  if (isNaN(last) || !lastTs) return "-";
+
+  const targetTs = lastTs - days * 24 * 60 * 60;
+  let pastData = history.find((h) => h.datetimeLastPriceTs <= targetTs);
+  if (!pastData) pastData = history[0];
   const past = parseFloat(pastData.lastPrice);
-  return !isNaN(last) && !isNaN(past) ? ((last - past) / past) * 100 : "-";
+
+  return !isNaN(past) ? ((last - past) / past) * 100 : "-";
 }
 
-// Calcular variación desde el inicio del año
+// Calcular variación desde inicio de año con fallback seguro
 function calculateYearToDate(history) {
-  if (!history.length) return "-";
+  if (!history || history.length < 2) return "-";
   const last = parseFloat(history[history.length - 1].lastPrice);
-  const startYear = history.find(
-    (h) =>
-      new Date(h.datetimeLastPrice).getFullYear() === new Date().getFullYear()
+  const lastTs = history[history.length - 1].datetimeLastPriceTs;
+  if (isNaN(last) || !lastTs) return "-";
+
+  const currentYear = new Date(lastTs * 1000).getFullYear();
+  let startYear = history.find(
+    (h) => new Date(h.datetimeLastPriceTs * 1000).getFullYear() === currentYear
   );
-  if (!startYear) return "-";
+  if (!startYear) startYear = history[0];
   const first = parseFloat(startYear.lastPrice);
-  return !isNaN(last) && !isNaN(first) ? ((last - first) / first) * 100 : "-";
+
+  return !isNaN(first) ? ((last - first) / first) * 100 : "-";
 }
 
 // Obtener resumen de un índice (IPSA)

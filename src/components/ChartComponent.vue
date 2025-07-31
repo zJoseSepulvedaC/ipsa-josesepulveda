@@ -1,70 +1,42 @@
 <template>
   <div>
-    <canvas ref="chartCanvas"></canvas>
+    <canvas v-if="hasData" ref="chartCanvas"></canvas>
+    <p v-else class="loading">Cargando datos del gráfico...</p>
   </div>
 </template>
 
 <script>
-import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  Title,
-  CategoryScale,
-  Filler,
-} from "chart.js";
-
-Chart.register(
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  Title,
-  CategoryScale,
-  Filler
-);
+import { watch, computed, nextTick, ref } from "vue";
+import { useInstrumentsStore } from "../store/useInstrumentsStore";
+import Chart from "chart.js/auto";
 
 export default {
-  props: {
-    history: {
-      type: Array,
-      default: () => [],
-    },
-  },
-  mounted() {
-    this.renderChart();
-  },
-  watch: {
-    history() {
-      this.renderChart();
-    },
-  },
-  methods: {
-    formatDate(dateStr) {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("es-CL", {
-        day: "2-digit",
-        month: "short",
-      });
-    },
-    renderChart() {
-      if (this.chart) this.chart.destroy();
-      const ctx = this.$refs.chartCanvas.getContext("2d");
-      this.chart = new Chart(ctx, {
+  setup() {
+    const store = useInstrumentsStore();
+    const chartCanvas = ref(null);
+    let chart = null;
+
+    const hasData = computed(() => store.history && store.history.length > 0);
+
+    const renderChart = async () => {
+      if (!hasData.value) return;
+
+      await nextTick(); // <- Aseguramos que el DOM ya esté actualizado
+      const canvas = chartCanvas.value;
+      if (!canvas) return; // <- Si aún no está, salimos
+
+      if (chart) chart.destroy();
+      const ctx = canvas.getContext("2d");
+
+      chart = new Chart(ctx, {
         type: "line",
         data: {
-          labels: this.history.map((item) =>
-            this.formatDate(item.datetimeLastPrice)
-          ),
+          labels: store.history.map((p) => p.datetimeLastPrice),
           datasets: [
             {
-              label: "Precio",
-              data: this.history.map((item) => item.lastPrice),
+              label: store.selectedInstrument,
+              data: store.history.map((p) => p.lastPrice),
               borderColor: "blue",
-              fill: true,
-              backgroundColor: "rgba(0, 0, 255, 0.1)",
               tension: 0.3,
             },
           ],
@@ -72,30 +44,22 @@ export default {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            title: {
-              display: true,
-              text: "Histórico de Precios",
-            },
-          },
-          scales: {
-            x: {
-              ticks: {
-                maxRotation: 45,
-                minRotation: 45,
-              },
-            },
-          },
         },
       });
-    },
+    };
+
+    // Redibuja el gráfico cuando cambia el histórico
+    watch(() => store.history, renderChart, { immediate: true });
+
+    return { store, hasData, chartCanvas };
   },
 };
 </script>
 
 <style scoped>
-canvas {
-  max-width: 100%;
-  height: 300px;
+.loading {
+  color: #ccc;
+  text-align: center;
+  margin-top: 20px;
 }
 </style>

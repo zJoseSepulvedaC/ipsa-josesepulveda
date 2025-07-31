@@ -1,63 +1,77 @@
 <template>
   <div>
-    <HeaderComponent :indexName="selected" :summary="summary" />
-    <ChartComponent :history="history" />
+    <HeaderComponent />
+    <ChartComponent />
+    <SearchBarComponent />
+    <!-- Barra de búsqueda -->
     <InstrumentTableComponent
-      :instruments="instruments"
+      :instruments="filteredInstruments"
       :summaries="summaries"
-      v-model:selected="selected"
+      @update:selected="onInstrumentSelect"
     />
   </div>
 </template>
 
 <script>
+import { computed } from "vue";
 import HeaderComponent from "./components/HeaderComponent.vue";
 import ChartComponent from "./components/ChartComponent.vue";
+import SearchBarComponent from "./components/SearchBarComponent.vue";
 import InstrumentTableComponent from "./components/InstrumentTableComponent.vue";
 import {
   getConstituents,
   getInstrumentSummary,
   getInstrumentHistory,
 } from "./services/dataService";
+import { useInstrumentsStore } from "./store/useInstrumentsStore";
 
 export default {
-  components: { HeaderComponent, ChartComponent, InstrumentTableComponent },
-  data() {
-    return {
-      instruments: [],
-      summaries: {}, // ahora cargaremos los resúmenes reales
-      summary: { valor_actual: "-", variacion: "-" },
-      history: [],
-      selected: "IPSA",
-    };
+  components: {
+    HeaderComponent,
+    ChartComponent,
+    SearchBarComponent,
+    InstrumentTableComponent,
   },
-  async mounted() {
-    await this.loadData();
-  },
-  watch: {
-    selected() {
-      this.loadData();
-    },
-  },
-  methods: {
-    async loadData() {
+  setup() {
+    const store = useInstrumentsStore();
+
+    const loadInitialData = async () => {
       try {
-        // Obtenemos instrumentos y sus resúmenes desde el servicio
+        // Cargar lista de instrumentos
         const { instruments, summaries } = await getConstituents();
-        this.instruments = instruments;
-        this.summaries = summaries;
+        store.instruments = instruments;
+        store.summaries = summaries;
 
-        console.log("Instrumentos cargados:", this.instruments);
-        console.log("Summaries cargados:", this.summaries);
-
-        // Resumen e histórico del índice seleccionado
-        const resumen = await getInstrumentSummary(this.selected);
-        this.summary = { ...resumen };
-        this.history = await getInstrumentHistory(this.selected);
+        // Cargar datos iniciales del IPSA
+        const summary = await getInstrumentSummary(store.selectedInstrument);
+        const history = await getInstrumentHistory(store.selectedInstrument);
+        store.setSummary(summary);
+        store.setHistory(history);
       } catch (error) {
-        console.error("Error cargando datos:", error);
+        console.error("Error cargando datos iniciales:", error);
       }
-    },
+    };
+
+    const onInstrumentSelect = async (newSymbol) => {
+      try {
+        store.setInstrument(newSymbol);
+        const summary = await getInstrumentSummary(newSymbol);
+        const history = await getInstrumentHistory(newSymbol);
+        store.setSummary(summary);
+        store.setHistory(history);
+      } catch (error) {
+        console.error("Error al cambiar de instrumento:", error);
+      }
+    };
+
+    loadInitialData();
+
+    return {
+      store,
+      onInstrumentSelect,
+      filteredInstruments: computed(() => store.filteredInstruments),
+      summaries: computed(() => store.summaries),
+    };
   },
 };
 </script>
