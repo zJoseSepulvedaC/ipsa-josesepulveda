@@ -1,24 +1,37 @@
 <template>
   <div>
+    <!-- Encabezado -->
     <HeaderComponent />
-    <TabComponent />
-    <!-- NUEVO: pestañas para cambiar índices -->
-    <ChartComponent />
-    <SearchBarComponent />
+
+    <!-- Gráfico -->
+    <div v-if="hasHistory">
+      <ChartComponent />
+    </div>
+    <div v-else class="no-data">Cargando datos del gráfico...</div>
+
+    <!-- Tabs -->
+    <TabComponent @update:index="onIndexChange" />
+
     <!-- Barra de búsqueda -->
-    <InstrumentTableComponent
-      :instruments="filteredInstruments"
-      :summaries="summaries"
-      @update:selected="onInstrumentSelect"
-    />
+    <SearchBarComponent />
+
+    <!-- Tabla de instrumentos -->
+    <div v-if="hasInstruments">
+      <InstrumentTableComponent
+        :instruments="filteredInstruments"
+        :summaries="summaries"
+        @update:selected="onInstrumentSelect"
+      />
+    </div>
+    <div v-else class="no-data">No hay datos disponibles para este índice.</div>
   </div>
 </template>
 
 <script>
 import { computed } from "vue";
 import HeaderComponent from "./components/HeaderComponent.vue";
-import TabComponent from "./components/TabComponent.vue"; // <-- NUEVO
 import ChartComponent from "./components/ChartComponent.vue";
+import TabComponent from "./components/TabComponent.vue";
 import SearchBarComponent from "./components/SearchBarComponent.vue";
 import InstrumentTableComponent from "./components/InstrumentTableComponent.vue";
 import {
@@ -31,36 +44,62 @@ import { useInstrumentsStore } from "./store/useInstrumentsStore";
 export default {
   components: {
     HeaderComponent,
-    TabComponent, // <-- NUEVO
     ChartComponent,
+    TabComponent,
     SearchBarComponent,
     InstrumentTableComponent,
   },
   setup() {
     const store = useInstrumentsStore();
 
-    const loadInitialData = async () => {
+    // Cargar datos (índice o instrumento)
+    const loadData = async (symbol) => {
       try {
-        // Cargar lista de instrumentos
-        const { instruments, summaries } = await getConstituents();
+        const { instruments, summaries } = await getConstituents(symbol);
         store.instruments = instruments;
         store.summaries = summaries;
 
-        // Cargar datos iniciales del índice seleccionado
-        const summary = await getInstrumentSummary(store.selectedInstrument);
-        const history = await getInstrumentHistory(store.selectedInstrument);
+        const summary = await getInstrumentSummary(symbol);
+        const history = await getInstrumentHistory(symbol);
         store.setSummary(summary);
         store.setHistory(history);
+        store.setInstrument(symbol); // 🔥 Actualizamos el instrumento seleccionado
       } catch (error) {
-        console.error("Error cargando datos iniciales:", error);
+        console.warn(`No se pudieron cargar los datos para ${symbol}`);
       }
     };
 
+    // Cambio de índice
+    const onIndexChange = async (newIndex) => {
+      store.setIndex(newIndex);
+      await loadData(newIndex);
+    };
+
+    // Cambio de instrumento
+    // Cambio de instrumento
+    // Cambio de instrumento
     const onInstrumentSelect = async (newSymbol) => {
       try {
         store.setInstrument(newSymbol);
         const summary = await getInstrumentSummary(newSymbol);
-        const history = await getInstrumentHistory(newSymbol);
+
+        // Si el símbolo es un índice (IPSA, IGPA, NASDAQ), cargamos su histórico
+        const indices = ["IPSA", "IGPA", "NASDAQ"];
+        let history = store.history;
+
+        if (indices.includes(newSymbol)) {
+          try {
+            history = await getInstrumentHistory(newSymbol);
+          } catch (err) {
+            console.warn(`Histórico no disponible para ${newSymbol}`);
+            history = [];
+          }
+        } else {
+          console.log(
+            `No hay histórico para ${newSymbol}. Manteniendo el gráfico del índice.`
+          );
+        }
+
         store.setSummary(summary);
         store.setHistory(history);
       } catch (error) {
@@ -68,10 +107,22 @@ export default {
       }
     };
 
-    loadInitialData();
+    // Computed para saber si hay datos
+    const hasInstruments = computed(
+      () => store.instruments && store.instruments.length > 0
+    );
+    const hasHistory = computed(
+      () => store.history && store.history.length > 0
+    );
+
+    // Inicialización
+    loadData(store.selectedIndex || "IPSA");
 
     return {
       store,
+      hasInstruments,
+      hasHistory,
+      onIndexChange,
       onInstrumentSelect,
       filteredInstruments: computed(() => store.filteredInstruments),
       summaries: computed(() => store.summaries),
@@ -79,3 +130,12 @@ export default {
   },
 };
 </script>
+
+<style>
+.no-data {
+  text-align: center;
+  color: #ccc;
+  padding: 20px;
+  font-size: 1.2em;
+}
+</style>

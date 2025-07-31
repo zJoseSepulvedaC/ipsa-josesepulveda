@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 export const useInstrumentsStore = defineStore("instruments", {
   state: () => ({
     selectedInstrument: "IPSA",
+    selectedIndex: "IPSA", // Nuevo: índice seleccionado
     summary: {},
     history: [],
     instruments: [],
@@ -11,12 +12,26 @@ export const useInstrumentsStore = defineStore("instruments", {
   }),
   getters: {
     filteredInstruments: (state) => {
-      if (!state.searchQuery) return state.instruments;
-      return state.instruments.filter(
-        (inst) =>
-          inst.codeInstrument.toLowerCase().includes(state.searchQuery) ||
-          inst.nameInstrument?.toLowerCase().includes(state.searchQuery)
-      );
+      let list = state.instruments;
+
+      // Filtrar por índice
+      if (state.selectedIndex) {
+        list = list.filter(
+          (inst) =>
+            inst.index?.toLowerCase() === state.selectedIndex.toLowerCase()
+        );
+      }
+
+      // Filtrar por búsqueda
+      if (state.searchQuery) {
+        list = list.filter(
+          (inst) =>
+            inst.codeInstrument.toLowerCase().includes(state.searchQuery) ||
+            inst.nameInstrument?.toLowerCase().includes(state.searchQuery)
+        );
+      }
+
+      return list;
     },
   },
   actions: {
@@ -28,6 +43,13 @@ export const useInstrumentsStore = defineStore("instruments", {
     },
     setHistory(data) {
       this.history = data;
+    },
+    setSearchQuery(query) {
+      this.searchQuery = query;
+    },
+    setIndex(index) {
+      this.selectedIndex = index;
+      this.selectedInstrument = index; // Cambiamos el instrumento al índice seleccionado
     },
   },
 });

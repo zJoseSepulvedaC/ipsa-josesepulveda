@@ -1,63 +1,72 @@
 import axios from "axios";
 
-// Obtener lista de instrumentos + sus resúmenes (con variaciones)
-export async function getConstituents() {
-  const res = await axios.get("/data/constituyentes/constituentsList.json");
-  const instruments = res.data?.data?.constituents || [];
-
-  const summaries = {};
-  for (const instrument of instruments) {
-    try {
-      // Resumen básico
-      const summaryRes = await axios.get(
-        `/data/resumen/${instrument.codeInstrument}.json`
-      );
-      const price = summaryRes.data?.data?.price || {};
-      const last = parseFloat(price.lastPrice);
-      const close = parseFloat(price.closePrice);
-      const varDia =
-        !isNaN(last) && !isNaN(close) ? ((last - close) / close) * 100 : 0;
-
-      // Histórico para cálculos adicionales
-      const historyRes = await axios.get(
-        `/data/history/history-${instrument.codeInstrument}.json`
-      );
-      const history = historyRes.data?.data?.chart || [];
-
-      // Variaciones calculadas con fallback
-      const var30d = calculateVariation(history, 30);
-      const varAno = calculateYearToDate(history);
-      const var12m = calculateVariation(history, 365);
-
-      summaries[instrument.codeInstrument] = {
-        ultimo: last || "-",
-        monto: price.volumeMoney || "-",
-        varDia: varDia,
-        var30d: var30d,
-        varAno: varAno,
-        var12m: var12m,
-      };
-    } catch (e) {
-      console.error(
-        "Error cargando instrumento:",
-        instrument.codeInstrument,
-        e
-      );
-      summaries[instrument.codeInstrument] = {
-        ultimo: "-",
-        monto: "-",
-        varDia: "-",
-        var30d: "-",
-        varAno: "-",
-        var12m: "-",
-      };
+// Obtener lista de instrumentos (dinámico según índice)
+export async function getConstituents(index = "IPSA") {
+  try {
+    // Solo cargamos el JSON que tenemos (IPSA)
+    if (index !== "IPSA") {
+      console.warn(`No hay datos disponibles para ${index}`);
+      return { instruments: [], summaries: {} };
     }
-  }
 
-  return { instruments, summaries };
+    const res = await axios.get("/data/constituyentes/constituentsList.json");
+    const indexName = res.data?.data?.info?.name || "IPSA";
+
+    const instruments =
+      res.data?.data?.constituents.map((inst) => ({
+        ...inst,
+        index: indexName,
+      })) || [];
+
+    const summaries = {};
+    for (const instrument of instruments) {
+      try {
+        const summaryRes = await axios.get(
+          `/data/resumen/${instrument.codeInstrument}.json`
+        );
+        const price = summaryRes.data?.data?.price || {};
+        const last = parseFloat(price.lastPrice);
+        const close = parseFloat(price.closePrice);
+        const varDia =
+          !isNaN(last) && !isNaN(close) ? ((last - close) / close) * 100 : 0;
+
+        const historyRes = await axios.get(
+          `/data/history/history-${instrument.codeInstrument}.json`
+        );
+        const history = historyRes.data?.data?.chart || [];
+
+        const var30d = calculateVariation(history, 30);
+        const varAno = calculateYearToDate(history);
+        const var12m = calculateVariation(history, 365);
+
+        summaries[instrument.codeInstrument] = {
+          ultimo: last || "-",
+          monto: price.volumeMoney || "-",
+          varDia: varDia,
+          var30d: var30d,
+          varAno: varAno,
+          var12m: var12m,
+        };
+      } catch {
+        summaries[instrument.codeInstrument] = {
+          ultimo: "-",
+          monto: "-",
+          varDia: "-",
+          var30d: "-",
+          varAno: "-",
+          var12m: "-",
+        };
+      }
+    }
+
+    return { instruments, summaries };
+  } catch (error) {
+    console.warn(`No hay datos disponibles para ${index}`);
+    return { instruments: [], summaries: {} }; // Si falla, devolvemos vacío
+  }
 }
 
-// Calcular variación con fallback seguro
+// Calcular variación
 function calculateVariation(history, days) {
   if (!history || history.length < 2) return "-";
   const last = parseFloat(history[history.length - 1].lastPrice);
@@ -72,7 +81,7 @@ function calculateVariation(history, days) {
   return !isNaN(past) ? ((last - past) / past) * 100 : "-";
 }
 
-// Calcular variación desde inicio de año con fallback seguro
+// Calcular variación desde inicio de año
 function calculateYearToDate(history) {
   if (!history || history.length < 2) return "-";
   const last = parseFloat(history[history.length - 1].lastPrice);
@@ -89,23 +98,33 @@ function calculateYearToDate(history) {
   return !isNaN(first) ? ((last - first) / first) * 100 : "-";
 }
 
-// Obtener resumen de un índice (IPSA)
+// Obtener resumen de índice
 export async function getInstrumentSummary(symbol) {
-  const res = await axios.get(`/data/resumen/${symbol}.json`);
-  const price = res.data?.data?.price || {};
-  const last = parseFloat(price.lastPrice);
-  const close = parseFloat(price.closePrice);
-  const variacion =
-    !isNaN(last) && !isNaN(close) ? ((last - close) / close) * 100 : 0;
+  try {
+    const res = await axios.get(`/data/resumen/${symbol}.json`);
+    const price = res.data?.data?.price || {};
+    const last = parseFloat(price.lastPrice);
+    const close = parseFloat(price.closePrice);
+    const variacion =
+      !isNaN(last) && !isNaN(close) ? ((last - close) / close) * 100 : null;
 
-  return {
-    valor_actual: last || "-",
-    variacion: variacion || 0,
-  };
+    return {
+      valor_actual: !isNaN(last) ? last : null,
+      variacion: variacion !== null ? variacion : null,
+    };
+  } catch (e) {
+    console.warn(`Resumen no disponible para ${symbol}`);
+    return { valor_actual: null, variacion: null };
+  }
 }
 
-// Obtener histórico de un instrumento/índice
+// Obtener histórico de índice
 export async function getInstrumentHistory(symbol) {
-  const res = await axios.get(`/data/history/history-${symbol}.json`);
-  return res.data?.data?.chart || [];
+  try {
+    if (symbol !== "IPSA") return [];
+    const res = await axios.get(`/data/history/history-${symbol}.json`);
+    return res.data?.data?.chart || [];
+  } catch (e) {
+    return [];
+  }
 }

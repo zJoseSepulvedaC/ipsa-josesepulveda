@@ -20,10 +20,9 @@ export default {
 
     const renderChart = async () => {
       if (!hasData.value) return;
-
-      await nextTick(); // <- Aseguramos que el DOM ya esté actualizado
+      await nextTick();
       const canvas = chartCanvas.value;
-      if (!canvas) return; // <- Si aún no está, salimos
+      if (!canvas) return;
 
       if (chart) chart.destroy();
       const ctx = canvas.getContext("2d");
@@ -31,7 +30,9 @@ export default {
       chart = new Chart(ctx, {
         type: "line",
         data: {
-          labels: store.history.map((p) => p.datetimeLastPrice),
+          labels: store.history.map((p) =>
+            new Date(p.datetimeLastPriceTs * 1000).toLocaleDateString()
+          ),
           datasets: [
             {
               label: store.selectedInstrument,
@@ -48,8 +49,9 @@ export default {
       });
     };
 
-    // Redibuja el gráfico cuando cambia el histórico
-    watch(() => store.history, renderChart, { immediate: true });
+    watch([() => store.history, () => store.selectedInstrument], renderChart, {
+      immediate: true,
+    });
 
     return { store, hasData, chartCanvas };
   },

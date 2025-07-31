@@ -3,8 +3,8 @@
     <button
       v-for="index in indices"
       :key="index"
-      :class="{ active: index === selectedIndex }"
-      @click="selectIndex(index)"
+      :class="{ active: index === store.selectedIndex }"
+      @click="changeIndex(index)"
     >
       {{ index }}
     </button>
@@ -13,31 +13,19 @@
 
 <script>
 import { useInstrumentsStore } from "../store/useInstrumentsStore";
-import {
-  getInstrumentSummary,
-  getInstrumentHistory,
-} from "../services/dataService";
 
 export default {
-  setup() {
+  emits: ["update:index"], // <- Avisamos al padre el cambio
+  setup(props, { emit }) {
     const store = useInstrumentsStore();
+    const indices = ["IPSA", "IGPA", "NASDAQ"];
 
-    const indices = ["IPSA", "IGPA", "NASDAQ"]; // Puedes agregar más índices
-    const selectedIndex = store.selectedInstrument; // Estado global
-
-    const selectIndex = async (index) => {
-      try {
-        store.setInstrument(index); // Cambiar índice seleccionado
-        const summary = await getInstrumentSummary(index);
-        const history = await getInstrumentHistory(index);
-        store.setSummary(summary);
-        store.setHistory(history);
-      } catch (error) {
-        console.error("Error al cambiar de índice:", error);
-      }
+    const changeIndex = (index) => {
+      store.setIndex(index); // Guardamos el índice en el store
+      emit("update:index", index); // Avisamos al padre
     };
 
-    return { indices, selectedIndex, selectIndex };
+    return { indices, store, changeIndex };
   },
 };
 </script>
