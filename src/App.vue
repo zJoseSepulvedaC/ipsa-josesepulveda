@@ -1,6 +1,8 @@
 <template>
   <div>
     <HeaderComponent />
+    <TabComponent />
+    <!-- NUEVO: pestañas para cambiar índices -->
     <ChartComponent />
     <SearchBarComponent />
     <!-- Barra de búsqueda -->
@@ -15,6 +17,7 @@
 <script>
 import { computed } from "vue";
 import HeaderComponent from "./components/HeaderComponent.vue";
+import TabComponent from "./components/TabComponent.vue"; // <-- NUEVO
 import ChartComponent from "./components/ChartComponent.vue";
 import SearchBarComponent from "./components/SearchBarComponent.vue";
 import InstrumentTableComponent from "./components/InstrumentTableComponent.vue";
@@ -28,6 +31,7 @@ import { useInstrumentsStore } from "./store/useInstrumentsStore";
 export default {
   components: {
     HeaderComponent,
+    TabComponent, // <-- NUEVO
     ChartComponent,
     SearchBarComponent,
     InstrumentTableComponent,
@@ -42,7 +46,7 @@ export default {
         store.instruments = instruments;
         store.summaries = summaries;
 
-        // Cargar datos iniciales del IPSA
+        // Cargar datos iniciales del índice seleccionado
         const summary = await getInstrumentSummary(store.selectedInstrument);
         const history = await getInstrumentHistory(store.selectedInstrument);
         store.setSummary(summary);
