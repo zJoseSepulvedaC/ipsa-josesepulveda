@@ -17,7 +17,7 @@
         <tr
           v-for="instrument in instruments"
           :key="instrument.codeInstrument"
-          @click="$emit('update:selected', instrument.codeInstrument)"
+          @click="selectInstrument(instrument.codeInstrument)"
           class="instrument-row"
         >
           <td>{{ instrument.shortName }}</td>
@@ -43,31 +43,37 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    instruments: { type: Array, default: () => [] },
-    summaries: { type: Object, default: () => ({}) },
-    selected: String,
-  },
-  methods: {
-    getSummary(code) {
-      return this.summaries[code] || {};
-    },
-    formatNumber(num) {
-      if (!num) return "-";
-      return (parseFloat(num) / 1_000_000).toFixed(2);
-    },
-    formatPercent(val) {
-      if (val == null || isNaN(val)) return "-";
-      return parseFloat(val).toFixed(2) + "%";
-    },
-    getClass(val) {
-      if (val > 0) return "positive";
-      if (val < 0) return "negative";
-      return "";
-    },
-  },
+<script setup>
+import { computed } from "vue";
+import { useInstrumentsStore } from "../store/useInstrumentsStore";
+
+const store = useInstrumentsStore();
+
+const instruments = computed(() => store.filteredInstruments);
+const summaries = computed(() => store.summaries);
+
+const selectInstrument = (symbol) => {
+  store.setInstrument(symbol);
+};
+
+const getSummary = (code) => {
+  return summaries.value[code] || {};
+};
+
+const formatNumber = (num) => {
+  if (!num) return "-";
+  return (parseFloat(num) / 1_000_000).toFixed(2);
+};
+
+const formatPercent = (val) => {
+  if (val == null || isNaN(val)) return "-";
+  return parseFloat(val).toFixed(2) + "%";
+};
+
+const getClass = (val) => {
+  if (val > 0) return "positive";
+  if (val < 0) return "negative";
+  return "";
 };
 </script>
 

@@ -1,9 +1,8 @@
 import axios from "axios";
 
-// Obtener lista de instrumentos (dinámico según índice)
-export async function getConstituents(index = "IPSA") {
+// Obtener lista de instrumentos
+export async function fetchConstituents(index = "IPSA") {
   try {
-    // Solo cargamos el JSON que tenemos (IPSA)
     if (index !== "IPSA") {
       console.warn(`No hay datos disponibles para ${index}`);
       return { instruments: [], summaries: {} };
@@ -62,7 +61,7 @@ export async function getConstituents(index = "IPSA") {
     return { instruments, summaries };
   } catch (error) {
     console.warn(`No hay datos disponibles para ${index}`);
-    return { instruments: [], summaries: {} }; // Si falla, devolvemos vacío
+    return { instruments: [], summaries: {} };
   }
 }
 
@@ -98,8 +97,8 @@ function calculateYearToDate(history) {
   return !isNaN(first) ? ((last - first) / first) * 100 : "-";
 }
 
-// Obtener resumen de índice
-export async function getInstrumentSummary(symbol) {
+// Obtener resumen de instrumento
+export async function fetchSummary(symbol) {
   try {
     const res = await axios.get(`/data/resumen/${symbol}.json`);
     const price = res.data?.data?.price || {};
@@ -118,10 +117,9 @@ export async function getInstrumentSummary(symbol) {
   }
 }
 
-// Obtener histórico de índice
-export async function getInstrumentHistory(symbol) {
+// Obtener histórico de instrumento
+export async function fetchHistory(symbol) {
   try {
-    if (symbol !== "IPSA") return [];
     const res = await axios.get(`/data/history/history-${symbol}.json`);
     return res.data?.data?.chart || [];
   } catch (e) {

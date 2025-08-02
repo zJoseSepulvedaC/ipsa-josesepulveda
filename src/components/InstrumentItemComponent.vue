@@ -5,50 +5,29 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from "vue";
 import { useInstrumentsStore } from "../store/useInstrumentsStore";
-import {
-  getInstrumentSummary,
-  getInstrumentHistory,
-} from "../services/dataService";
 
-export default {
-  props: {
-    instrument: {
-      type: Object,
-      required: true,
-    },
-  },
-  computed: {
-    formattedVariacion() {
-      const val = parseFloat(this.instrument.variacion);
-      return isNaN(val) ? "-" : val.toFixed(2);
-    },
-    variationClass() {
-      const val = parseFloat(this.instrument.variacion);
-      return isNaN(val) ? "" : val >= 0 ? "positive" : "negative";
-    },
-  },
-  setup(props) {
-    const store = useInstrumentsStore();
+const props = defineProps({
+  instrument: { type: Object, required: true },
+});
 
-    const selectInstrument = async () => {
-      store.setInstrument(props.instrument.codeInstrument);
+const store = useInstrumentsStore();
 
-      const summary = await getInstrumentSummary(
-        props.instrument.codeInstrument
-      );
-      const history = await getInstrumentHistory(
-        props.instrument.codeInstrument
-      );
-
-      store.setSummary(summary);
-      store.setHistory(history);
-    };
-
-    return { selectInstrument };
-  },
+const selectInstrument = () => {
+  store.setInstrument(props.instrument.codeInstrument);
 };
+
+const formattedVariacion = computed(() => {
+  const val = parseFloat(props.instrument?.variacion);
+  return isNaN(val) ? "-" : val.toFixed(2);
+});
+
+const variationClass = computed(() => {
+  const val = parseFloat(props.instrument?.variacion);
+  return isNaN(val) ? "" : val >= 0 ? "positive" : "negative";
+});
 </script>
 
 <style scoped>

@@ -1,38 +1,46 @@
 <template>
   <div class="header">
-    <h1>{{ store.selectedInstrument }}</h1>
+    <h1>{{ selectedInstrument }}</h1>
     <p>Valor actual: {{ formattedValor }}</p>
     <p :class="variationClass">Variación: {{ formattedVariacion }}%</p>
   </div>
 </template>
 
-<script>
+<script setup>
 import { computed } from "vue";
 import { useInstrumentsStore } from "../store/useInstrumentsStore";
 
-export default {
-  setup() {
-    const store = useInstrumentsStore();
+const store = useInstrumentsStore();
 
-    const formattedValor = computed(() => {
-      if (!store.summary || !store.summary.valor_actual) return "-";
-      const val = parseFloat(store.summary.valor_actual);
-      return isNaN(val) ? "-" : val.toFixed(2);
-    });
+const selectedInstrument = computed(() => store.selectedInstrument);
 
-    const formattedVariacion = computed(() => {
-      if (!store.summary || !store.summary.variacion) return "-";
-      const val = parseFloat(store.summary.variacion);
-      return isNaN(val) ? "-" : val.toFixed(2);
-    });
+const formattedValor = computed(() => {
+  const val = parseFloat(store.summary?.valor_actual);
+  return !isNaN(val) ? val.toFixed(2) : "-";
+});
 
-    const variationClass = computed(() => {
-      if (!store.summary || !store.summary.variacion) return "";
-      const val = parseFloat(store.summary.variacion);
-      return isNaN(val) ? "" : val >= 0 ? "positive" : "negative";
-    });
+const formattedVariacion = computed(() => {
+  const val = parseFloat(store.summary?.variacion);
+  return !isNaN(val) ? val.toFixed(2) : "-";
+});
 
-    return { store, formattedValor, formattedVariacion, variationClass };
-  },
-};
+const variationClass = computed(() => {
+  const val = parseFloat(store.summary?.variacion);
+  if (isNaN(val)) return "";
+  return val >= 0 ? "positive" : "negative";
+});
 </script>
+
+<style scoped>
+.header {
+  padding: 1rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+.positive {
+  color: green;
+}
+.negative {
+  color: red;
+}
+</style>
